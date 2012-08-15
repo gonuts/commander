@@ -169,7 +169,7 @@ The commands are:
 Use "{{$.Name}} help [command]" for more information about a command.
 
 Additional help topics:
-{{range .}}{{if not .Runnable}}
+{{range .Commands}}{{if not .Runnable}}
     {{.Name | printf "%-11s"}} {{.Short}}{{end}}{{end}}
 
 Use "{{.Name}} help [topic]" for more information about that topic.
