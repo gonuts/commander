@@ -64,7 +64,7 @@ func (c *Commander) Run(args []string) error {
 	}
 
 	for _, cmd := range c.Commands {
-		if cmd.Name() == args[0] && cmd.Run != nil {
+		if cmd.Name() == args[0] && cmd.Runnable() {
 			cmd.Flag.Usage = func() { cmd.Usage() }
 			if cmd.CustomFlags {
 				args = args[1:]
