@@ -10,12 +10,13 @@
 package commander
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"text/template"
+
+	"github.com/sbinet/go-flag"
 )
 
 // A Commander holds the configuration for the command line tool.
