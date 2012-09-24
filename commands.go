@@ -60,8 +60,7 @@ func (c *Commander) Run(args []string) error {
 	}
 
 	if args[0] == "help" {
-		c.help(args[1:])
-		return nil
+		return c.help(args[1:])
 	}
 
 	for _, cmd := range c.Commands {
