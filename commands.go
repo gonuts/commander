@@ -153,18 +153,15 @@ func (c *Command) Usage() {
 	fmt.Fprintf(os.Stderr, "%s\n", strings.TrimSpace(c.Long))
 }
 
-// flagUsage returns the usage details as a string
-func flagUsage(flagset *flag.FlagSet) string {
-	if flagset == nil {
-		return ""
-	}
+// FlagOptions returns the flag's options as a string
+func (c* Command) FlagOptions() string {
 	var buf bytes.Buffer
-	flagset.SetOutput(&buf)
+	c.Flag.SetOutput(&buf)
 	fmt.Fprintf(&buf, "\noptions:\n")
-	if flagset.Usage != nil {
-		flagset.Usage()
+	if c.Flag.Usage != nil {
+		c.Flag.Usage()
 	} else {
-		flagset.PrintDefaults()
+		c.Flag.PrintDefaults()
 	}
 	return string(buf.Bytes())
 }
@@ -196,16 +193,13 @@ Use "{{.Name}} help [topic]" for more information about that topic.
 var helpTemplate = `{{if .Runnable}}Usage: {{.ProgramName}} {{.UsageLine}}
 
 {{end}}{{.Long | trim}}
-{{.Flag | flagUsage}}
+{{.FlagOptions}}
 `
 
 // tmpl executes the given template text on data, writing the result to w.
 func tmpl(w io.Writer, text string, data interface{}) error {
 	t := template.New("top")
-	t.Funcs(template.FuncMap{
-		"trim": strings.TrimSpace,
-		"flagUsage": flagUsage,
-	})
+	t.Funcs(template.FuncMap{"trim": strings.TrimSpace})
 	template.Must(t.Parse(text))
 	return t.Execute(w, data)
 }
