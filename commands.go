@@ -10,6 +10,7 @@
 package commander
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -152,6 +153,22 @@ func (c *Command) Usage() {
 	fmt.Fprintf(os.Stderr, "%s\n", strings.TrimSpace(c.Long))
 }
 
+// flagUsage returns the usage details as a string
+func flagUsage(flagset *flag.FlagSet) string {
+	if flagset == nil {
+		return ""
+	}
+	var buf bytes.Buffer
+	flagset.SetOutput(&buf)
+	fmt.Fprintf(&buf, "\noptions:\n")
+	if flagset.Usage != nil {
+		flagset.Usage()
+	} else {
+		flagset.PrintDefaults()
+	}
+	return string(buf.Bytes())
+}
+
 // Runnable reports whether the command can be run; otherwise
 // it is a documentation pseudo-command such as importpath.
 func (c *Command) Runnable() bool {
@@ -179,12 +196,16 @@ Use "{{.Name}} help [topic]" for more information about that topic.
 var helpTemplate = `{{if .Runnable}}Usage: {{.ProgramName}} {{.UsageLine}}
 
 {{end}}{{.Long | trim}}
+{{.Flag | flagUsage}}
 `
 
 // tmpl executes the given template text on data, writing the result to w.
 func tmpl(w io.Writer, text string, data interface{}) error {
 	t := template.New("top")
-	t.Funcs(template.FuncMap{"trim": strings.TrimSpace})
+	t.Funcs(template.FuncMap{
+		"trim": strings.TrimSpace,
+		"flagUsage": flagUsage,
+	})
 	template.Must(t.Parse(text))
 	return t.Execute(w, data)
 }
