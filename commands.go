@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"text/template"
 
@@ -64,6 +65,7 @@ func (c *Commander) Run(args []string) error {
 		return c.help(args[1:])
 	}
 
+	// first, try an internal command
 	for _, cmd := range c.Commands {
 		if cmd.Name() == args[0] && cmd.Runnable() {
 			cmd.Flag.Usage = func() { cmd.Usage() }
@@ -77,6 +79,19 @@ func (c *Commander) Run(args []string) error {
 			return nil
 		}
 	}
+
+	// then try out an external one
+	bin, err := exec.LookPath(c.Name + "-" + args[0])
+	if err == nil {
+		cmd := exec.Command(bin, args...)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
+
+	// TODO: try an alias
+	//...
 
 	return fmt.Errorf("unknown subcommand %q\nRun 'help' for usage.\n", args[0])
 }
@@ -154,7 +169,7 @@ func (c *Command) Usage() {
 }
 
 // FlagOptions returns the flag's options as a string
-func (c* Command) FlagOptions() string {
+func (c *Command) FlagOptions() string {
 	var buf bytes.Buffer
 	c.Flag.SetOutput(&buf)
 	fmt.Fprintf(&buf, "\noptions:\n")
