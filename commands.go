@@ -25,11 +25,17 @@ import (
 type Commander struct {
 	// Name is the command name, usually the executable's name.
 	Name string
+	// Short is a short description of the commander
+	Short string
 	// Commands is the list of commands supported by this commander program.
 	Commands []*Command
 	// Flag is a set of flags for the whole commander. It should not be
 	// changed after Run() is called.
 	Flag *flag.FlagSet
+	// Parent is the parent commander of this commander
+	Parent *Commander
+	// Commanders is the list of sub-commanders supported by this commander program.
+	Commanders []*Commander
 }
 
 // Run executes the commander using the provided arguments. The command
@@ -39,6 +45,11 @@ func (c *Commander) Run(args []string) error {
 	if c == nil {
 		return fmt.Errorf("Called Run() on a nil Commander")
 	}
+	// setup hierarchy...
+	for _, cmd := range c.Commanders {
+		cmd.Parent = c
+	}
+
 	if c.Flag == nil {
 		c.Flag = flag.NewFlagSet(c.Name, flag.ExitOnError)
 	}
@@ -65,7 +76,15 @@ func (c *Commander) Run(args []string) error {
 		return c.help(args[1:])
 	}
 
-	// first, try an internal command
+	// first, try a sub-commander
+	for _, cmd := range c.Commanders {
+		n := cmd.Name
+		if n == args[0] {
+			return cmd.Run(args[1:])
+		}
+	}
+
+	// then, try an internal command
 	for _, cmd := range c.Commands {
 		if cmd.Name() == args[0] && cmd.Runnable() {
 			cmd.Flag.Usage = func() { cmd.Usage() }
@@ -81,7 +100,7 @@ func (c *Commander) Run(args []string) error {
 	}
 
 	// then try out an external one
-	bin, err := exec.LookPath(c.Name + "-" + args[0])
+	bin, err := exec.LookPath(c.FullName() + "-" + args[0])
 	if err == nil {
 		cmd := exec.Command(bin, args...)
 		cmd.Stdin = os.Stdin
@@ -115,6 +134,16 @@ func (c *Commander) help(args []string) error {
 
 	arg := args[0]
 
+	for _, cmd := range c.Commanders {
+		n := cmd.Name
+		if strings.HasPrefix(n, c.Name+"-") {
+			n = n[len(c.Name+"-"):]
+		}
+		if n == arg {
+			return cmd.help(args[1:])
+		}
+	}
+
 	for _, cmd := range c.Commands {
 		if cmd.Name() == arg {
 			c := struct {
@@ -126,6 +155,15 @@ func (c *Commander) help(args []string) error {
 	}
 
 	return fmt.Errorf("Unknown help topic %#q.  Run '%v help'.\n", arg, c.Name)
+}
+
+// FullName returns the full name of the commander, prefixed with its parent commanders, if any.
+func (c *Commander) FullName() string {
+	n := c.Name
+	if c.Parent != nil {
+		n = c.Parent.FullName() + "-" + n
+	}
+	return n
 }
 
 // A Command is an implementation of a subcommand.
@@ -194,6 +232,8 @@ var usageTemplate = `Usage:
 The commands are:
 {{range .Commands}}{{if .Runnable}}
     {{.Name | printf "%-11s"}} {{.Short}}{{end}}{{end}}
+{{range .Commanders}}
+    {{.Name | printf "%-11s"}} {{.Short}}{{end}}
 
 Use "{{$.Name}} help [command]" for more information about a command.
 
