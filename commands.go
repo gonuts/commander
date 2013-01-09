@@ -18,7 +18,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/sbinet/go-flag"
+	"github.com/gonuts/flag"
 )
 
 // A Commander holds the configuration for the command line tool.
