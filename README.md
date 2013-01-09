@@ -1,7 +1,7 @@
-go-commander
+commander
 ============
 
-``go-commander`` is a spin off of [golang](http://golang.org) ``go tool`` infrastructure to provide commands and sub-commands.
+``commander`` is a spin off of [golang](http://golang.org) ``go tool`` infrastructure to provide commands and sub-commands.
 
 A ``commander.Commander`` has a ``Commands`` field holding ``[]*commander.Command`` subcommands, referenced by name from the command line and an optional ``[]*commander.Commander`` ``Commanders`` field for nested commanders.
 
@@ -16,12 +16,12 @@ $ mycmd subcmd1 action1 [options...]
 ```
 
 ## Documentation
-Is available on [godoc](http://godoc.org/github.com/sbinet/go-commander)
+Is available on [godoc](http://godoc.org/github.com/gonuts/commander)
 
 ## Installation
 Is performed with the usual:
 ```sh
-$ go get github.com/sbinet/go-commander
+$ go get github.com/gonuts/commander
 ```
 
 ## TODO
