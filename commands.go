@@ -102,7 +102,7 @@ func (c *Commander) Run(args []string) error {
 	// then try out an external one
 	bin, err := exec.LookPath(c.FullName() + "-" + args[0])
 	if err == nil {
-		cmd := exec.Command(bin, args...)
+		cmd := exec.Command(bin, args[1:]...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
