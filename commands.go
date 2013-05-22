@@ -12,13 +12,13 @@ package commander
 import (
 	"bytes"
 	"fmt"
+	"github.com/gonuts/flag"
 	"io"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"text/template"
-
-	"github.com/gonuts/flag"
 )
 
 // A Commander holds the configuration for the command line tool.
@@ -36,6 +36,45 @@ type Commander struct {
 	Parent *Commander
 	// Commanders is the list of sub-commanders supported by this commander program.
 	Commanders []*Commander
+}
+
+// Type to allow us to use sort.Sort on a slice of Commanders
+type CommanderSlice []*Commander
+
+func (c CommanderSlice) Len() int {
+	return len(c)
+}
+
+func (c CommanderSlice) Less(i, j int) bool {
+	return c[i].Name < c[j].Name
+}
+
+func (c CommanderSlice) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+type CommandSlice []*Command
+
+func (c CommandSlice) Len() int {
+	return len(c)
+}
+
+func (c CommandSlice) Less(i, j int) bool {
+	return c[i].Name() < c[j].Name()
+}
+
+func (c CommandSlice) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+// Sort the subcommanders.
+func (c *Commander) SortCommanders() {
+	sort.Sort(CommanderSlice(c.Commanders))
+}
+
+// Sort the commanders
+func (c *Commander) SortCommands() {
+	sort.Sort(CommandSlice(c.Commands))
 }
 
 // Run executes the commander using the provided arguments. The command
@@ -116,7 +155,9 @@ func (c *Commander) Run(args []string) error {
 }
 
 func (c *Commander) usage() error {
-	err := tmpl(os.Stderr,strings.Replace(usageTemplate,"%%MAX%%",fmt.Sprintf("%d",c.MaxLen()),-1),c)
+	c.SortCommanders()
+	c.SortCommands()
+	err := tmpl(os.Stderr, strings.Replace(usageTemplate, "%%MAX%%", fmt.Sprintf("%d", c.MaxLen()), -1), c)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -149,7 +190,7 @@ func (c *Commander) help(args []string) error {
 			c := struct {
 				*Command
 				ProgramName string
-			}{cmd, c.Name}
+			}{cmd, c.FullSpacedName()}
 			return tmpl(os.Stdout, helpTemplate, c)
 		}
 	}
@@ -159,13 +200,13 @@ func (c *Commander) help(args []string) error {
 
 func (c *Commander) MaxLen() (res int) {
 	res = 0
-	for _,cmd := range c.Commands {
+	for _, cmd := range c.Commands {
 		i := len(cmd.Name())
 		if i > res {
 			res = i
 		}
 	}
-	for _,cmd := range c.Commanders {
+	for _, cmd := range c.Commanders {
 		i := len(cmd.Name)
 		if i > res {
 			res = i
@@ -179,6 +220,15 @@ func (c *Commander) FullName() string {
 	n := c.Name
 	if c.Parent != nil {
 		n = c.Parent.FullName() + "-" + n
+	}
+	return n
+}
+
+//FullSpacedName returns the full name of the commander, with subcommand names seperated by spaces.
+func (c *Commander) FullSpacedName() string {
+	n := c.Name
+	if c.Parent != nil {
+		n = c.Parent.FullSpacedName() + " " + n
 	}
 	return n
 }
@@ -242,23 +292,21 @@ func (c *Command) Runnable() bool {
 	return c.Run != nil
 }
 
-var usageTemplate = `Usage:
-	{{.Name}} command [arguments]
+var usageTemplate = `Usage: {{.FullSpacedName}} command [arguments]
 
-The commands are:
-{{range .Commands}}{{if .Runnable}}
-    {{.Name | printf "%-%%MAX%%s"}} {{.Short}}{{end}}{{end}}
-{{range $cmd := .Commanders}}
-    {{.Name | printf "%-%%MAX%%s"}} {{.Short}}{{end}}
+Commands:
+{{range .Commands}}{{if .Runnable}}    {{.Name | printf "%-%%MAX%%s"}} {{.Short}}{{end}}
+{{end}}
 
-Use "{{$.Name}} help [command]" for more information about a command.
+Subcommands:
+{{range .Commanders}}    {{.Name | printf "%-%%MAX%%s"}} {{.Short}}
+{{end}}
+Use "{{.Name}} help [command]" for more information about a command.
 
 Additional help topics:
-{{range $cmd := .Commands}}{{if not .Runnable}}
+{{range .Commands}}{{if not .Runnable}}
     {{.Name | printf "%-%%MAX%%s"}} {{.Short}}{{end}}{{end}}
-
 Use "{{.Name}} help [topic]" for more information about that topic.
-
 `
 
 var helpTemplate = `{{if .Runnable}}Usage: {{.ProgramName}} {{.UsageLine}}
