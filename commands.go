@@ -116,7 +116,7 @@ func (c *Commander) Run(args []string) error {
 }
 
 func (c *Commander) usage() error {
-	err := tmpl(os.Stderr, usageTemplate, c)
+	err := tmpl(os.Stderr,strings.Replace(usageTemplate,"%%MAX%%",fmt.Sprintf("%d",c.MaxLen()),-1),c)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -155,6 +155,23 @@ func (c *Commander) help(args []string) error {
 	}
 
 	return fmt.Errorf("Unknown help topic %#q.  Run '%v help'.\n", arg, c.Name)
+}
+
+func (c *Commander) MaxLen() (res int) {
+	res = 0
+	for _,cmd := range c.Commands {
+		i := len(cmd.Name())
+		if i > res {
+			res = i
+		}
+	}
+	for _,cmd := range c.Commanders {
+		i := len(cmd.Name)
+		if i > res {
+			res = i
+		}
+	}
+	return
 }
 
 // FullName returns the full name of the commander, prefixed with its parent commanders, if any.
@@ -226,20 +243,19 @@ func (c *Command) Runnable() bool {
 }
 
 var usageTemplate = `Usage:
-
 	{{.Name}} command [arguments]
 
 The commands are:
 {{range .Commands}}{{if .Runnable}}
-    {{.Name | printf "%-11s"}} {{.Short}}{{end}}{{end}}
-{{range .Commanders}}
-    {{.Name | printf "%-11s"}} {{.Short}}{{end}}
+    {{.Name | printf "%-%%MAX%%s"}} {{.Short}}{{end}}{{end}}
+{{range $cmd := .Commanders}}
+    {{.Name | printf "%-%%MAX%%s"}} {{.Short}}{{end}}
 
 Use "{{$.Name}} help [command]" for more information about a command.
 
 Additional help topics:
-{{range .Commands}}{{if not .Runnable}}
-    {{.Name | printf "%-11s"}} {{.Short}}{{end}}{{end}}
+{{range $cmd := .Commands}}{{if not .Runnable}}
+    {{.Name | printf "%-%%MAX%%s"}} {{.Short}}{{end}}{{end}}
 
 Use "{{.Name}} help [topic]" for more information about that topic.
 
