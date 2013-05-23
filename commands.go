@@ -12,13 +12,15 @@ package commander
 import (
 	"bytes"
 	"fmt"
-	"github.com/gonuts/flag"
 	"io"
 	"os"
 	"os/exec"
 	"sort"
 	"strings"
 	"text/template"
+
+	"github.com/gonuts/flag"
+
 )
 
 // A Commander holds the configuration for the command line tool.
