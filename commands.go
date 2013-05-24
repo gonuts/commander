@@ -218,7 +218,11 @@ func (c *Commander) MaxLen() (res int) {
 
 // ColFormat returns the column header size format for printing in the template
 func (c *Commander) ColFormat() string {
-	return fmt.Sprintf("%%-%ds", c.MaxLen())
+	sz := c.MaxLen()
+	if sz < 11 {
+		sz = 11
+	}
+	return fmt.Sprintf("%%-%ds", sz)
 }
 
 // FullName returns the full name of the commander, prefixed with its parent commanders, if any.
