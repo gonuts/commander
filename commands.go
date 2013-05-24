@@ -20,7 +20,6 @@ import (
 	"text/template"
 
 	"github.com/gonuts/flag"
-
 )
 
 // A Commander holds the configuration for the command line tool.
@@ -159,7 +158,7 @@ func (c *Commander) Run(args []string) error {
 func (c *Commander) usage() error {
 	c.SortCommanders()
 	c.SortCommands()
-	err := tmpl(os.Stderr, strings.Replace(usageTemplate, "%%MAX%%", fmt.Sprintf("%d", c.MaxLen()), -1), c)
+	err := tmpl(os.Stderr, usageTemplate, c)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -217,6 +216,11 @@ func (c *Commander) MaxLen() (res int) {
 	return
 }
 
+// ColFormat returns the column header size format for printing in the template
+func (c *Commander) ColFormat() string {
+	return fmt.Sprintf("%%-%ds", c.MaxLen())
+}
+
 // FullName returns the full name of the commander, prefixed with its parent commanders, if any.
 func (c *Commander) FullName() string {
 	n := c.Name
@@ -226,7 +230,7 @@ func (c *Commander) FullName() string {
 	return n
 }
 
-//FullSpacedName returns the full name of the commander, with subcommand names seperated by spaces.
+// FullSpacedName returns the full name of the commander, with subcommand names seperated by spaces.
 func (c *Commander) FullSpacedName() string {
 	n := c.Name
 	if c.Parent != nil {
@@ -297,17 +301,17 @@ func (c *Command) Runnable() bool {
 var usageTemplate = `Usage: {{.FullSpacedName}} command [arguments]
 
 Commands:
-{{range .Commands}}{{if .Runnable}}    {{.Name | printf "%-%%MAX%%s"}} {{.Short}}{{end}}
+{{range .Commands}}{{if .Runnable}}    {{.Name | printf (colfmt)}} {{.Short}}{{end}}
 {{end}}
 
 Subcommands:
-{{range .Commanders}}    {{.Name | printf "%-%%MAX%%s"}} {{.Short}}
+{{range .Commanders}}    {{.Name | printf (colfmt)}} {{.Short}}
 {{end}}
 Use "{{.Name}} help [command]" for more information about a command.
 
 Additional help topics:
 {{range .Commands}}{{if not .Runnable}}
-    {{.Name | printf "%-%%MAX%%s"}} {{.Short}}{{end}}{{end}}
+    {{.Name | printf (colfmt)}} {{.Short}}{{end}}{{end}}
 Use "{{.Name}} help [topic]" for more information about that topic.
 `
 
@@ -320,7 +324,10 @@ var helpTemplate = `{{if .Runnable}}Usage: {{.ProgramName}} {{.UsageLine}}
 // tmpl executes the given template text on data, writing the result to w.
 func tmpl(w io.Writer, text string, data interface{}) error {
 	t := template.New("top")
-	t.Funcs(template.FuncMap{"trim": strings.TrimSpace})
+	t.Funcs(template.FuncMap{
+		"trim":   strings.TrimSpace,
+		"colfmt": func() string { return data.(*Commander).ColFormat() },
+	})
 	template.Must(t.Parse(text))
 	return t.Execute(w, data)
 }
