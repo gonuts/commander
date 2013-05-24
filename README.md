@@ -1,6 +1,8 @@
 commander
 ============
 
+[![Build Status](https://drone.io/github.com/gonuts/commander/status.png)](https://drone.io/github.com/gonuts/commander/latest)
+
 ``commander`` is a spin off of [golang](http://golang.org) ``go tool`` infrastructure to provide commands and sub-commands.
 
 A ``commander.Commander`` has a ``Commands`` field holding ``[]*commander.Command`` subcommands, referenced by name from the command line and an optional ``[]*commander.Commander`` ``Commanders`` field for nested commanders.
