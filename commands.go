@@ -199,6 +199,15 @@ func (c *Commander) help(args []string) error {
 	return fmt.Errorf("Unknown help topic %#q.  Run '%v help'.\n", arg, c.Name)
 }
 
+// FlagOptions returns the flag's options as a string
+func (c *Commander) FlagOptions() string {
+	var buf bytes.Buffer
+	c.Flag.SetOutput(&buf)
+	fmt.Fprintf(&buf, "\noptions:\n")
+    c.Flag.PrintDefaults()
+	return string(buf.Bytes())
+}
+
 func (c *Commander) MaxLen() (res int) {
 	res = 0
 	for _, cmd := range c.Commands {
@@ -312,6 +321,7 @@ Subcommands:
 {{range .Commanders}}    {{.Name | printf (colfmt)}} {{.Short}}
 {{end}}
 Use "{{.Name}} help [command]" for more information about a command.
+{{.FlagOptions}}
 
 Additional help topics:
 {{range .Commands}}{{if not .Runnable}}
