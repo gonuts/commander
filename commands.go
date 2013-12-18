@@ -295,24 +295,26 @@ func (c *Command) HasHelpTopics() bool {
 }
 
 var Defaults = Command{
-	UsageTemplate: `{{if .Runnable}}Usage: {{.UsageLine}}
+	UsageTemplate: `{{if .Runnable}}Usage: {{.Parent.FullSpacedName}} {{.UsageLine}}
 
 {{end}}{{.FullSpacedName}} - {{.Short}}
 
 {{if .Subcommands}}Commands:
-{{range .Subcommands}}{{if not .Unlisted}}    {{.Name | printf (colfmt)}} {{.Short}}{{end}}
-{{end}}
+{{range .Subcommands}}{{if not .Unlisted}}
+    {{.Name | printf (colfmt)}} {{.Short}}{{end}}{{end}}
+
 Use "{{.Name}} help <command>" for more information about a command.
 
 {{end}}{{.FlagOptions}}{{if .HasHelpTopics}}
 Additional help topics:
 {{range .Subcommands}}{{if .Unlisted}}
     {{.Name | printf (colfmt)}} {{.Short}}{{end}}{{end}}
+
 Use "{{.Name}} help <topic>" for more information about that topic.
 
 {{end}}`,
 
-	HelpTemplate: `{{if .Runnable}}Usage: {{.UsageLine}}
+	HelpTemplate: `{{if .Runnable}}Usage: {{.Parent.FullSpacedName}} {{.UsageLine}}
 
 {{end}}{{.Long | trim}}
 {{.FlagOptions}}
