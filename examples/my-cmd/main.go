@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jbenet/commander"
+	"github.com/gonuts/commander"
 )
 
 var g_cmd = &commander.Command{

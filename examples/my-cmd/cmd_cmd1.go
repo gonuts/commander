@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/jbenet/commander"
+	"github.com/gonuts/commander"
 	"github.com/gonuts/flag"
 )
 
