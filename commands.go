@@ -22,6 +22,15 @@ import (
 	"github.com/gonuts/flag"
 )
 
+// UsageSection differentiates between sections in the usage text.
+type Listing int
+
+const (
+	CommandsList = iota
+	HelpTopicsList
+	Unlisted
+)
+
 // A Command is an implementation of a subcommand.
 type Command struct {
 
@@ -35,8 +44,9 @@ type Command struct {
 	// Long is the long description shown in the 'help <this-command>' output.
 	Long string
 
-	// Unlested reports whether this command should not be listed in Usage.
-	Unlisted bool
+	// List reports which list to show this command in Usage and Help.
+	// Choose between {CommandsList (default), HelpTopicsList, Unlisted}
+	List Listing
 
 	// Run runs the command.
 	// The args are the arguments after the command name.
@@ -285,13 +295,14 @@ func (c *Command) FullSpacedName() string {
 	return n
 }
 
-func (c *Command) HasHelpTopics() bool {
+func (c *Command) SubcommandList(list Listing) []*Command {
+	var cmds []*Command
 	for _, cmd := range c.Subcommands {
-		if cmd.Unlisted {
-			return true
+		if cmd.List == list {
+			cmds = append(cmds, cmd)
 		}
 	}
-	return false
+	return cmds
 }
 
 var Defaults = Command{
@@ -299,16 +310,16 @@ var Defaults = Command{
 
 {{end}}{{.FullSpacedName}} - {{.Short}}
 
-{{if .Subcommands}}Commands:
-{{range .Subcommands}}{{if not .Unlisted}}
-    {{.Name | printf (colfmt)}} {{.Short}}{{end}}{{end}}
+{{if commandList}}Commands:
+{{range commandList}}
+    {{.Name | printf (colfmt)}} {{.Short}}{{end}}
 
 Use "{{.Name}} help <command>" for more information about a command.
 
-{{end}}{{.FlagOptions}}{{if .HasHelpTopics}}
+{{end}}{{.FlagOptions}}{{if helpList}}
 Additional help topics:
-{{range .Subcommands}}{{if .Unlisted}}
-    {{.Name | printf (colfmt)}} {{.Short}}{{end}}{{end}}
+{{range helpList}}
+    {{.Name | printf (colfmt)}} {{.Short}}{{end}}
 
 Use "{{.Name}} help <topic>" for more information about that topic.
 
@@ -327,6 +338,8 @@ func tmpl(w io.Writer, text string, data interface{}) error {
 	t.Funcs(template.FuncMap{
 		"trim":   strings.TrimSpace,
 		"colfmt": func() string { return data.(*Command).ColFormat() },
+		"commandList": func() []*Command { return data.(*Command).SubcommandList(CommandsList) },
+		"helpList": func() []*Command { return data.(*Command).SubcommandList(HelpTopicsList) },
 	})
 	template.Must(t.Parse(text))
 	return t.Execute(w, data)
