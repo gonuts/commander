@@ -24,10 +24,11 @@ ex:
 	return cmd
 }
 
-func ex_run_cmd_cmd2(cmd *commander.Command, args []string) {
+func ex_run_cmd_cmd2(cmd *commander.Command, args []string) error {
 	name := "my-cmd-" + cmd.Name()
 	quiet := cmd.Flag.Lookup("q").Value.Get().(bool)
 	fmt.Printf("%s: hello from cmd2 (quiet=%v)\n", name, quiet)
+	return nil
 }
 
 // EOF

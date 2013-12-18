@@ -5,17 +5,19 @@ commander
 
 ``commander`` is a spin off of [golang](http://golang.org) ``go tool`` infrastructure to provide commands and sub-commands.
 
-A ``commander.Commander`` has a ``Commands`` field holding ``[]*commander.Command`` subcommands, referenced by name from the command line and an optional ``[]*commander.Commander`` ``Commanders`` field for nested commanders.
+A ``commander.Command`` has a ``Subcommands`` field holding ``[]*commander.Command`` subcommands, referenced by name from the command line.
 
-So a ``Commander`` can have sub commanders.
-
-An example is provided by the [hwaf](https://github.com/mana-fwk/hwaf) command.
+So a ``Command`` can have sub commands.
 
 So you can have, /e.g./
 ```sh
 $ mycmd action1 [options...]
 $ mycmd subcmd1 action1 [options...]
 ```
+
+Example provided by:
+- [hwaf](https://github.com/mana-fwk/hwaf) (Warning: uses an older version)
+- [examples/my-cmd](examples/my-cmd)
 
 ## Documentation
 Is available on [godoc](http://godoc.org/github.com/gonuts/commander)
@@ -32,7 +34,7 @@ See the simple ``my-cmd`` example command for how this all hangs
 together [there](http://github.com/gonuts/commander/blob/master/examples/my-cmd/main.go):
 
 ```sh
-$ my-cmd cmd1        
+$ my-cmd cmd1
 my-cmd-cmd1: hello from cmd1 (quiet=true)
 
 $ my-cmd cmd1 -q
@@ -41,7 +43,7 @@ my-cmd-cmd1: hello from cmd1 (quiet=true)
 $ my-cmd cmd1 -q=0
 my-cmd-cmd1: hello from cmd1 (quiet=false)
 
-$ my-cmd cmd2     
+$ my-cmd cmd2
 my-cmd-cmd2: hello from cmd2 (quiet=true)
 
 $ my-cmd subcmd1 cmd1
@@ -65,9 +67,8 @@ The commands are:
 
     cmd1        runs cmd1 and exits
     cmd2        runs cmd2 and exits
-
-    subcmd1     subcmd1 sub-commander. does subcmd1 thingies
-    subcmd2     subcmd2 sub-commander. does subcmd2 thingies
+    subcmd1     subcmd1 subcommand. does subcmd1 thingies
+    subcmd2     subcmd2 subcommand. does subcmd2 thingies
 
 Use "my-cmd help [command]" for more information about a command.
 
@@ -101,5 +102,6 @@ Use "subcmd1 help [topic]" for more information about that topic.
 ## TODO
 
 - automatically generate the bash/zsh/csh autocompletion lists
-
+- automatically generate Readme examples text
+- test cases
 

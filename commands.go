@@ -22,242 +22,35 @@ import (
 	"github.com/gonuts/flag"
 )
 
-// A Commander holds the configuration for the command line tool.
-type Commander struct {
-	// Name is the command name, usually the executable's name.
-	Name string
-	// Short is a short description of the commander
-	Short string
-	// Commands is the list of commands supported by this commander program.
-	Commands []*Command
-	// Flag is a set of flags for the whole commander. It should not be
-	// changed after Run() is called.
-	Flag *flag.FlagSet
-	// Parent is the parent commander of this commander
-	Parent *Commander
-	// Commanders is the list of sub-commanders supported by this commander program.
-	Commanders []*Commander
-}
+// UsageSection differentiates between sections in the usage text.
+type Listing int
 
-// Type to allow us to use sort.Sort on a slice of Commanders
-type CommanderSlice []*Commander
-
-func (c CommanderSlice) Len() int {
-	return len(c)
-}
-
-func (c CommanderSlice) Less(i, j int) bool {
-	return c[i].Name < c[j].Name
-}
-
-func (c CommanderSlice) Swap(i, j int) {
-	c[i], c[j] = c[j], c[i]
-}
-
-type CommandSlice []*Command
-
-func (c CommandSlice) Len() int {
-	return len(c)
-}
-
-func (c CommandSlice) Less(i, j int) bool {
-	return c[i].Name() < c[j].Name()
-}
-
-func (c CommandSlice) Swap(i, j int) {
-	c[i], c[j] = c[j], c[i]
-}
-
-// Sort the subcommanders.
-func (c *Commander) SortCommanders() {
-	sort.Sort(CommanderSlice(c.Commanders))
-}
-
-// Sort the commanders
-func (c *Commander) SortCommands() {
-	sort.Sort(CommandSlice(c.Commands))
-}
-
-// Run executes the commander using the provided arguments. The command
-// matching the first argument is executed and it receives the remaining
-// arguments.
-func (c *Commander) Run(args []string) error {
-	if c == nil {
-		return fmt.Errorf("Called Run() on a nil Commander")
-	}
-	// setup hierarchy...
-	for _, cmd := range c.Commanders {
-		cmd.Parent = c
-	}
-
-	if c.Flag == nil {
-		c.Flag = flag.NewFlagSet(c.Name, flag.ExitOnError)
-	}
-	if c.Flag.Usage == nil {
-		c.Flag.Usage = func() {
-			if err := c.usage(); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-			}
-		}
-	}
-	if !c.Flag.Parsed() {
-		if err := c.Flag.Parse(args); err != nil {
-			return fmt.Errorf("Commander.Main flag parsing failure: %v", err)
-		}
-	}
-	if len(args) < 1 {
-		if err := c.usage(); err != nil {
-			return err
-		}
-		return fmt.Errorf("Not enough arguments provided")
-	}
-
-	if args[0] == "help" {
-		return c.help(args[1:])
-	}
-
-	// first, try a sub-commander
-	for _, cmd := range c.Commanders {
-		n := cmd.Name
-		if n == args[0] {
-			return cmd.Run(args[1:])
-		}
-	}
-
-	// then, try an internal command
-	for _, cmd := range c.Commands {
-		if cmd.Name() == args[0] && cmd.Runnable() {
-			cmd.Flag.Usage = func() { cmd.Usage() }
-			if cmd.CustomFlags {
-				args = args[1:]
-			} else {
-				cmd.Flag.Parse(args[1:])
-				args = cmd.Flag.Args()
-			}
-			cmd.Run(cmd, args)
-			return nil
-		}
-	}
-
-	// then try out an external one
-	bin, err := exec.LookPath(c.FullName() + "-" + args[0])
-	if err == nil {
-		cmd := exec.Command(bin, args[1:]...)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		return cmd.Run()
-	}
-
-	// TODO: try an alias
-	//...
-
-	return fmt.Errorf("unknown subcommand %q\nRun 'help' for usage.\n", args[0])
-}
-
-func (c *Commander) usage() error {
-	c.SortCommanders()
-	c.SortCommands()
-	err := tmpl(os.Stderr, usageTemplate, c)
-	if err != nil {
-		fmt.Println(err)
-	}
-	return err
-}
-
-// help implements the 'help' command.
-func (c *Commander) help(args []string) error {
-	if len(args) == 0 {
-		return c.usage()
-	}
-	if len(args) != 1 {
-		return fmt.Errorf("usage: %v help command\n\nToo many arguments given.\n", c.Name)
-	}
-
-	arg := args[0]
-
-	for _, cmd := range c.Commanders {
-		n := cmd.Name
-		if strings.HasPrefix(n, c.Name+"-") {
-			n = n[len(c.Name+"-"):]
-		}
-		if n == arg {
-			return cmd.help(args[1:])
-		}
-	}
-
-	for _, cmd := range c.Commands {
-		if cmd.Name() == arg {
-			c := struct {
-				*Command
-				ProgramName string
-			}{cmd, c.FullSpacedName()}
-			return tmpl(os.Stdout, helpTemplate, c)
-		}
-	}
-
-	return fmt.Errorf("Unknown help topic %#q.  Run '%v help'.\n", arg, c.Name)
-}
-
-func (c *Commander) MaxLen() (res int) {
-	res = 0
-	for _, cmd := range c.Commands {
-		i := len(cmd.Name())
-		if i > res {
-			res = i
-		}
-	}
-	for _, cmd := range c.Commanders {
-		i := len(cmd.Name)
-		if i > res {
-			res = i
-		}
-	}
-	return
-}
-
-// ColFormat returns the column header size format for printing in the template
-func (c *Commander) ColFormat() string {
-	sz := c.MaxLen()
-	if sz < 11 {
-		sz = 11
-	}
-	return fmt.Sprintf("%%-%ds", sz)
-}
-
-// FullName returns the full name of the commander, prefixed with its parent commanders, if any.
-func (c *Commander) FullName() string {
-	n := c.Name
-	if c.Parent != nil {
-		n = c.Parent.FullName() + "-" + n
-	}
-	return n
-}
-
-// FullSpacedName returns the full name of the commander, with subcommand names seperated by spaces.
-func (c *Commander) FullSpacedName() string {
-	n := c.Name
-	if c.Parent != nil {
-		n = c.Parent.FullSpacedName() + " " + n
-	}
-	return n
-}
+const (
+	CommandsList = iota
+	HelpTopicsList
+	Unlisted
+)
 
 // A Command is an implementation of a subcommand.
 type Command struct {
-	// Run runs the command.
-	// The args are the arguments after the command name.
-	Run func(cmd *Command, args []string)
 
-	// UsageLine is the one-line usage message.
+	// UsageLine is the short usage message.
 	// The first word in the line is taken to be the command name.
 	UsageLine string
 
-	// Short is the short description shown in the 'help' output.
+	// Short is the short description line shown in command lists.
 	Short string
 
-	// Long is the long message shown in the 'help <this-command>' output.
+	// Long is the long description shown in the 'help <this-command>' output.
 	Long string
+
+	// List reports which list to show this command in Usage and Help.
+	// Choose between {CommandsList (default), HelpTopicsList, Unlisted}
+	List Listing
+
+	// Run runs the command.
+	// The args are the arguments after the command name.
+	Run func(cmd *Command, args []string) error
 
 	// Flag is a set of flags specific to this command.
 	Flag flag.FlagSet
@@ -265,6 +58,20 @@ type Command struct {
 	// CustomFlags indicates that the command will do its own
 	// flag parsing.
 	CustomFlags bool
+
+	// Subcommands are dispatched from this command
+	Subcommands []*Command
+
+	// Parent command, nil for root.
+	Parent *Command
+
+	// UsageTemplate formats the usage (short) information displayed to the user
+	// (leave empty for default)
+	UsageTemplate string
+
+	// HelpTemplate formats the help (long) information displayed to the user
+	// (leave empty for default)
+	HelpTemplate string
 }
 
 // Name returns the command's name: the first word in the usage line.
@@ -279,21 +86,20 @@ func (c *Command) Name() string {
 
 // Usage prints the usage details to the standard error output.
 func (c *Command) Usage() {
-	fmt.Fprintf(os.Stderr, "usage: %s\n\n", c.UsageLine)
-	fmt.Fprintf(os.Stderr, "%s\n", strings.TrimSpace(c.Long))
+	c.usage()
 }
 
 // FlagOptions returns the flag's options as a string
 func (c *Command) FlagOptions() string {
 	var buf bytes.Buffer
 	c.Flag.SetOutput(&buf)
-	fmt.Fprintf(&buf, "\noptions:\n")
-	if c.Flag.Usage != nil {
-		c.Flag.Usage()
-	} else {
-		c.Flag.PrintDefaults()
+	c.Flag.PrintDefaults()
+
+	str := string(buf.Bytes())
+	if len(str) > 0 {
+		return fmt.Sprintf("\nOptions:\n%s", str)
 	}
-	return string(buf.Bytes())
+	return ""
 }
 
 // Runnable reports whether the command can be run; otherwise
@@ -302,35 +108,238 @@ func (c *Command) Runnable() bool {
 	return c.Run != nil
 }
 
-var usageTemplate = `Usage: {{.FullSpacedName}} command [arguments]
+// Type to allow us to use sort.Sort on a slice of Commands
+type CommandSlice []*Command
 
-Commands:
-{{range .Commands}}{{if .Runnable}}    {{.Name | printf (colfmt)}} {{.Short}}{{end}}
-{{end}}
+func (c CommandSlice) Len() int {
+	return len(c)
+}
 
-Subcommands:
-{{range .Commanders}}    {{.Name | printf (colfmt)}} {{.Short}}
-{{end}}
-Use "{{.Name}} help [command]" for more information about a command.
+func (c CommandSlice) Less(i, j int) bool {
+	return c[i].Name() < c[j].Name()
+}
 
+func (c CommandSlice) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+// Sort the commands
+func (c *Command) SortCommands() {
+	sort.Sort(CommandSlice(c.Subcommands))
+}
+
+// Init the command
+func (c *Command) init() {
+	if c.Parent != nil {
+		return // already initialized.
+	}
+
+	// setup strings
+	if len(c.UsageLine) < 1 {
+		c.UsageLine = Defaults.UsageLine
+	}
+	if len(c.UsageTemplate) < 1 {
+		c.UsageTemplate = Defaults.UsageTemplate
+	}
+	if len(c.HelpTemplate) < 1 {
+		c.HelpTemplate = Defaults.HelpTemplate
+	}
+
+	// init subcommands
+	for _, cmd := range c.Subcommands {
+		cmd.init()
+	}
+
+	// init hierarchy...
+	for _, cmd := range c.Subcommands {
+		cmd.Parent = c
+	}
+}
+
+// Dispatch executes the command using the provided arguments.
+// If a subcommand exists matching the first argument, it is dispatched.
+// Otherwise, the command's Run function is called.
+func (c *Command) Dispatch(args []string) error {
+	if c == nil {
+		return fmt.Errorf("Called Run() on a nil Command")
+	}
+
+	// Ensure command is initialized.
+	c.init()
+
+	// First, try a sub-command
+	if len(args) > 0 {
+		for _, cmd := range c.Subcommands {
+			n := cmd.Name()
+			if n == args[0] {
+				return cmd.Dispatch(args[1:])
+			}
+		}
+
+		// help is builtin (but after, to allow overriding)
+		if args[0] == "help" {
+			return c.help(args[1:])
+		}
+
+		// then, try out an external binary (git-style)
+		bin, err := exec.LookPath(c.FullName() + "-" + args[0])
+		if err == nil {
+			cmd := exec.Command(bin, args[1:]...)
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			return cmd.Run()
+		}
+	}
+
+	// then, try running this command
+	if c.Runnable() {
+		if !c.CustomFlags {
+			var err = error(nil)
+			c.Flag.Usage = func() {
+				c.Usage()
+				err = fmt.Errorf("Failed to parse flags.")
+			}
+			c.Flag.Parse(args)
+			if err != nil {
+				return err
+			}
+			args = c.Flag.Args()
+		}
+		return c.Run(c, args)
+	}
+
+	// TODO: try an alias
+	//...
+
+	// Last, print usage
+	if err := c.usage(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Command) usage() error {
+	c.SortCommands()
+	err := tmpl(os.Stderr, c.UsageTemplate, c)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return err
+}
+
+// help implements the 'help' command.
+func (c *Command) help(args []string) error {
+
+	// help exactly for this command?
+	if len(args) == 0 {
+		if len(c.Long) > 0 {
+			return tmpl(os.Stdout, c.HelpTemplate, c)
+		} else {
+			return c.usage()
+		}
+	}
+
+	arg := args[0]
+
+	// is this help for a subcommand?
+	for _, cmd := range c.Subcommands {
+		n := cmd.Name()
+		// strip out "<parent>-"" name
+		if strings.HasPrefix(n, c.Name()+"-") {
+			n = n[len(c.Name()+"-"):]
+		}
+		if n == arg {
+			return cmd.help(args[1:])
+		}
+	}
+
+	return fmt.Errorf("Unknown help topic %#q.  Run '%v help'.\n", arg, c.Name())
+}
+
+func (c *Command) MaxLen() (res int) {
+	res = 0
+	for _, cmd := range c.Subcommands {
+		i := len(cmd.Name())
+		if i > res {
+			res = i
+		}
+	}
+	return
+}
+
+// ColFormat returns the column header size format for printing in the template
+func (c *Command) ColFormat() string {
+	sz := c.MaxLen()
+	if sz < 11 {
+		sz = 11
+	}
+	return fmt.Sprintf("%%-%ds", sz)
+}
+
+// FullName returns the full name of the command, prefixed with parent commands
+func (c *Command) FullName() string {
+	n := c.Name()
+	if c.Parent != nil {
+		n = c.Parent.FullName() + "-" + n
+	}
+	return n
+}
+
+// FullSpacedName returns the full name of the command, with ' ' instead of '-'
+func (c *Command) FullSpacedName() string {
+	n := c.Name()
+	if c.Parent != nil {
+		n = c.Parent.FullSpacedName() + " " + n
+	}
+	return n
+}
+
+func (c *Command) SubcommandList(list Listing) []*Command {
+	var cmds []*Command
+	for _, cmd := range c.Subcommands {
+		if cmd.List == list {
+			cmds = append(cmds, cmd)
+		}
+	}
+	return cmds
+}
+
+var Defaults = Command{
+	UsageTemplate: `{{if .Runnable}}Usage: {{.Parent.FullSpacedName}} {{.UsageLine}}
+
+{{end}}{{.FullSpacedName}} - {{.Short}}
+
+{{if commandList}}Commands:
+{{range commandList}}
+    {{.Name | printf (colfmt)}} {{.Short}}{{end}}
+
+Use "{{.Name}} help <command>" for more information about a command.
+
+{{end}}{{.FlagOptions}}{{if helpList}}
 Additional help topics:
-{{range .Commands}}{{if not .Runnable}}
-    {{.Name | printf (colfmt)}} {{.Short}}{{end}}{{end}}
-Use "{{.Name}} help [topic]" for more information about that topic.
-`
+{{range helpList}}
+    {{.Name | printf (colfmt)}} {{.Short}}{{end}}
 
-var helpTemplate = `{{if .Runnable}}Usage: {{.ProgramName}} {{.UsageLine}}
+Use "{{.Name}} help <topic>" for more information about that topic.
+
+{{end}}`,
+
+	HelpTemplate: `{{if .Runnable}}Usage: {{.Parent.FullSpacedName}} {{.UsageLine}}
 
 {{end}}{{.Long | trim}}
 {{.FlagOptions}}
-`
+`,
+}
 
 // tmpl executes the given template text on data, writing the result to w.
 func tmpl(w io.Writer, text string, data interface{}) error {
 	t := template.New("top")
 	t.Funcs(template.FuncMap{
 		"trim":   strings.TrimSpace,
-		"colfmt": func() string { return data.(*Commander).ColFormat() },
+		"colfmt": func() string { return data.(*Command).ColFormat() },
+		"commandList": func() []*Command { return data.(*Command).SubcommandList(CommandsList) },
+		"helpList": func() []*Command { return data.(*Command).SubcommandList(HelpTopicsList) },
 	})
 	template.Must(t.Parse(text))
 	return t.Execute(w, data)
