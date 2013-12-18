@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/gonuts/commander"
+	"github.com/jbenet/commander"
 	"github.com/gonuts/flag"
 )
 
@@ -24,10 +24,11 @@ ex:
 	return cmd
 }
 
-func ex_run_cmd_subcmd2_cmd2(cmd *commander.Command, args []string) {
+func ex_run_cmd_subcmd2_cmd2(cmd *commander.Command, args []string) error {
 	name := "my-cmd-subcmd2-" + cmd.Name()
 	quiet := cmd.Flag.Lookup("q").Value.Get().(bool)
 	fmt.Printf("%s: hello from subcmd2-cmd2 (quiet=%v)\n", name, quiet)
+	return nil
 }
 
 // EOF
