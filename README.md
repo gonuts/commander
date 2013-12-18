@@ -102,6 +102,6 @@ Use "subcmd1 help [topic]" for more information about that topic.
 ## TODO
 
 - automatically generate the bash/zsh/csh autocompletion lists
-- automatically generate Reasme examples text
+- automatically generate Readme examples text
 - test cases
 
