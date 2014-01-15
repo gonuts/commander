@@ -16,7 +16,7 @@ $ mycmd subcmd1 action1 [options...]
 ```
 
 Example provided by:
-- [hwaf](https://github.com/mana-fwk/hwaf) (Warning: uses an older version)
+- [hwaf](https://github.com/hwaf/hwaf)
 - [examples/my-cmd](examples/my-cmd)
 
 ## Documentation
