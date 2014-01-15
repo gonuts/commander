@@ -9,7 +9,7 @@ A ``commander.Command`` has a ``Subcommands`` field holding ``[]*commander.Comma
 
 So a ``Command`` can have sub commands.
 
-So you can have, /e.g./
+So you can have, _e.g._:
 ```sh
 $ mycmd action1 [options...]
 $ mycmd subcmd1 action1 [options...]
