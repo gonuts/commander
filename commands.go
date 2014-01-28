@@ -72,6 +72,11 @@ type Command struct {
 	// HelpTemplate formats the help (long) information displayed to the user
 	// (leave empty for default)
 	HelpTemplate string
+
+	// Stdout and Stderr by default are os.Stdout and os.Stderr, but you can
+	// point them at any io.Writer
+	Stdout io.Writer
+	Stderr io.Writer
 }
 
 // Name returns the command's name: the first word in the usage line.
@@ -145,6 +150,13 @@ func (c *Command) init() {
 		c.HelpTemplate = Defaults.HelpTemplate
 	}
 
+	if c.Stderr == nil {
+		c.Stderr = os.Stderr
+	}
+	if c.Stdout == nil {
+		c.Stdout = os.Stdout
+	}
+
 	// init subcommands
 	for _, cmd := range c.Subcommands {
 		cmd.init()
@@ -186,8 +198,8 @@ func (c *Command) Dispatch(args []string) error {
 		if err == nil {
 			cmd := exec.Command(bin, args[1:]...)
 			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
+			cmd.Stdout = c.Stdout
+			cmd.Stderr = c.Stderr
 			return cmd.Run()
 		}
 	}
@@ -221,7 +233,7 @@ func (c *Command) Dispatch(args []string) error {
 
 func (c *Command) usage() error {
 	c.SortCommands()
-	err := tmpl(os.Stderr, c.UsageTemplate, c)
+	err := tmpl(c.Stderr, c.UsageTemplate, c)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -234,7 +246,7 @@ func (c *Command) help(args []string) error {
 	// help exactly for this command?
 	if len(args) == 0 {
 		if len(c.Long) > 0 {
-			return tmpl(os.Stdout, c.HelpTemplate, c)
+			return tmpl(c.Stdout, c.HelpTemplate, c)
 		} else {
 			return c.usage()
 		}
@@ -336,10 +348,10 @@ Use "{{.Name}} help <topic>" for more information about that topic.
 func tmpl(w io.Writer, text string, data interface{}) error {
 	t := template.New("top")
 	t.Funcs(template.FuncMap{
-		"trim":   strings.TrimSpace,
-		"colfmt": func() string { return data.(*Command).ColFormat() },
+		"trim":        strings.TrimSpace,
+		"colfmt":      func() string { return data.(*Command).ColFormat() },
 		"commandList": func() []*Command { return data.(*Command).SubcommandList(CommandsList) },
-		"helpList": func() []*Command { return data.(*Command).SubcommandList(HelpTopicsList) },
+		"helpList":    func() []*Command { return data.(*Command).SubcommandList(HelpTopicsList) },
 	})
 	template.Must(t.Parse(text))
 	return t.Execute(w, data)
