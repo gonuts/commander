@@ -318,7 +318,7 @@ func (c *Command) SubcommandList(list Listing) []*Command {
 }
 
 var Defaults = Command{
-	UsageTemplate: `{{if .Runnable}}Usage: {{.Parent.FullSpacedName}} {{.UsageLine}}
+	UsageTemplate: `{{if .Runnable}}Usage: {{if .Parent}}{{.Parent.FullSpacedName}}{{end}} {{.UsageLine}}
 
 {{end}}{{.FullSpacedName}} - {{.Short}}
 
@@ -337,7 +337,7 @@ Use "{{.Name}} help <topic>" for more information about that topic.
 
 {{end}}`,
 
-	HelpTemplate: `{{if .Runnable}}Usage: {{.Parent.FullSpacedName}} {{.UsageLine}}
+	HelpTemplate: `{{if .Runnable}}Usage: {{if .Parent}}{{.Parent.FullSpacedName}}{{end}} {{.UsageLine}}
 
 {{end}}{{.Long | trim}}
 {{.FlagOptions}}
