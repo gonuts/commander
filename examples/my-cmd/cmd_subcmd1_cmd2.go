@@ -1,10 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 
 	"github.com/gonuts/commander"
-	"github.com/gonuts/flag"
 )
 
 var cmd_subcmd1_cmd2 = &commander.Command{
@@ -26,7 +26,7 @@ func init() {
 
 func ex_run_cmd_subcmd1_cmd2(cmd *commander.Command, args []string) error {
 	name := "my-cmd-subcmd1-" + cmd.Name()
-	quiet := cmd.Flag.Lookup("q").Value.Get().(bool)
+	quiet := cmd.Lookup("q").(bool)
 	fmt.Printf("%s: hello from subcmd1-cmd2 (quiet=%v)\n", name, quiet)
 	return nil
 }

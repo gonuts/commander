@@ -1,8 +1,9 @@
 package main
 
 import (
+	"flag"
+
 	"github.com/gonuts/commander"
-	"github.com/gonuts/flag"
 )
 
 func ex_make_cmd_subcmd2() *commander.Command {

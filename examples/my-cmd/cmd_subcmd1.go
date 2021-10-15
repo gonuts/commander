@@ -1,8 +1,9 @@
 package main
 
 import (
+	"flag"
+
 	"github.com/gonuts/commander"
-	"github.com/gonuts/flag"
 )
 
 var cmd_subcmd1 = &commander.Command{

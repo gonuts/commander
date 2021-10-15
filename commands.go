@@ -11,6 +11,7 @@ package commander
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -18,8 +19,6 @@ import (
 	"sort"
 	"strings"
 	"text/template"
-
-	"github.com/gonuts/flag"
 )
 
 // UsageSection differentiates between sections in the usage text.
@@ -105,6 +104,19 @@ func (c *Command) FlagOptions() string {
 		return fmt.Sprintf("\nOptions:\n%s", str)
 	}
 	return ""
+}
+
+// Lookup returns the named flag value or nil if none exists.
+func (c *Command) Lookup(name string) interface{} {
+	fval := c.Flag.Lookup(name)
+	if fval == nil {
+		return nil
+	}
+	fget, ok := fval.Value.(flag.Getter)
+	if !ok {
+		return nil
+	}
+	return fget.Get()
 }
 
 // Runnable reports whether the command can be run; otherwise
