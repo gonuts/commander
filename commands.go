@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+
+	"github.com/posener/complete"
 )
 
 // UsageSection differentiates between sections in the usage text.
@@ -76,6 +78,10 @@ type Command struct {
 	// point them at any io.Writer
 	Stdout io.Writer
 	Stderr io.Writer
+
+	// Complete provides command completion.
+	// If Complete is nil, a default one will be generated.
+	Complete *complete.Command
 }
 
 // Name returns the command's name: the first word in the usage line.
@@ -178,6 +184,13 @@ func (c *Command) init() {
 	for _, cmd := range c.Subcommands {
 		cmd.Parent = c
 	}
+
+	// initialize completer
+	// this needs to be done after initializing sub-commands.
+	if c.Complete == nil {
+		const user = false
+		c.Complete = makeDefaultCompleter(c, user)
+	}
 }
 
 // Dispatch executes the command using the provided arguments.
@@ -190,6 +203,13 @@ func (c *Command) Dispatch(args []string) error {
 
 	// Ensure command is initialized.
 	c.init()
+
+	if completion() {
+		if !complete.New(c.Name(), *c.Complete).Run() {
+			return fmt.Errorf("could not run tab-completion")
+		}
+		return nil
+	}
 
 	// First, try a sub-command
 	if len(args) > 0 {
