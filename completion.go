@@ -22,6 +22,7 @@ func CompleterFrom(cmdr *Command) *complete.Command {
 func makeDefaultCompleter(cmdr *Command, user bool) *complete.Command {
 	o := complete.Command{
 		Sub:         make(complete.Commands),
+		Flags:       make(complete.Flags),
 		GlobalFlags: make(complete.Flags),
 	}
 	for _, sub := range cmdr.Subcommands {
