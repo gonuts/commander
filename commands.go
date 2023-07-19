@@ -11,6 +11,7 @@ package commander
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -82,6 +83,8 @@ type Command struct {
 	// Complete provides command completion.
 	// If Complete is nil, a default one will be generated.
 	Complete *complete.Command
+
+	ctx context.Context
 }
 
 // Name returns the command's name: the first word in the usage line.
@@ -193,13 +196,24 @@ func (c *Command) init() {
 	}
 }
 
+func (c *Command) Context() context.Context {
+	if c.ctx != nil {
+		return c.ctx
+	}
+	if c.Parent != nil {
+		return c.Parent.Context()
+	}
+	panic("command has no context")
+}
+
 // Dispatch executes the command using the provided arguments.
 // If a subcommand exists matching the first argument, it is dispatched.
 // Otherwise, the command's Run function is called.
-func (c *Command) Dispatch(args []string) error {
+func (c *Command) Dispatch(ctx context.Context, args []string) error {
 	if c == nil {
 		return fmt.Errorf("Called Run() on a nil Command")
 	}
+	c.ctx = ctx
 
 	// Ensure command is initialized.
 	c.init()
@@ -216,7 +230,7 @@ func (c *Command) Dispatch(args []string) error {
 		for _, cmd := range c.Subcommands {
 			n := cmd.Name()
 			if n == args[0] {
-				return cmd.Dispatch(args[1:])
+				return cmd.Dispatch(ctx, args[1:])
 			}
 		}
 
@@ -228,7 +242,7 @@ func (c *Command) Dispatch(args []string) error {
 		// then, try out an external binary (git-style)
 		bin, err := exec.LookPath(c.FullName() + "-" + args[0])
 		if err == nil {
-			cmd := exec.Command(bin, args[1:]...)
+			cmd := exec.CommandContext(ctx, bin, args[1:]...)
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = c.Stdout
 			cmd.Stderr = c.Stderr

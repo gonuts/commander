@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -21,7 +22,7 @@ func init() {
 }
 
 func main() {
-	err := g_cmd.Dispatch(os.Args[1:])
+	err := g_cmd.Dispatch(context.Background(), os.Args[1:])
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
